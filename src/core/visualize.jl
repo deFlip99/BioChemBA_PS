@@ -1,7 +1,8 @@
 export
     ball_and_stick,
     stick,
-    van_der_waals
+    van_der_waals,
+    display_model
 
 const VISUALIZE = ES6Module(asset_path("../typescript/dist/biochemicalvisualization.js"))::Asset
 
@@ -32,13 +33,16 @@ function display_model(
 )
   dom = DOM.div(;style="width: $width; height: $height;")
 
+  obs_type = Observable(type)
+	# or, r = if ac isa Observable
+	# 	or = map(a -> prepare_model(a; type=type), ac)
+	# 	or, or.val
+	# else
+	# 	nothing, prepare_model(ac; type=type)
+	# end
 
-	or, r = if ac isa Observable
-		or = map(a -> prepare_model(a; type=type), ac)
-		or, or.val
-	else
-		nothing, prepare_model(ac; type=type)
-	end
+  obs_model = map(t -> prepare_model(ac; type=t), obs_type)
+  r = obs_model[]
 
 	if isnothing(r)
 		return
@@ -59,7 +63,8 @@ function display_model(
           scene.setAttribute("id", "bv-scene-1");
           scene.setAttribute("width", $width);
           scene.setAttribute("height", $height);
-          
+        
+
           document.addEventListener('bv-scene-mounted', () => {
             console.log('component mounted');
 
@@ -80,23 +85,75 @@ function display_model(
           });
 
           $dom.appendChild(scene);
+
+          // Context-menu
+          const contextMenu = document.createElement("bv-context-menu");
+          contextMenu.setAttribute("id", "bv-context-menu-1");
+          contextMenu.style.position = "fixed";
+          contextMenu.style.display = "none";
+          contextMenu.style.zIndex = "9999";
+          contextMenu.style.backgroundColor = "white";
+          contextMenu.style.border = "1px solid black";
+          contextMenu.style.padding = "5px";
+          contextMenu.innerHTML = `
+            <div id="BallAndStick"  style="padding:4px; cursor:pointer; color:#000000;">
+              Ball and Stick
+            </div>
+            <div id="VanDerWaal" style="padding:4px; cursor:pointer; color:#000000;">
+              Van der Waals
+            </div>
+            <div id="Stick" style="padding:4px; cursor:pointer; color:#000000;">
+              Stick
+            </div>
+            `;
+
+          contextMenu.addEventListener("click", event => {
+            const targetID = event.target.id;
+            switch(targetID) {
+              case "BallAndStick":
+                $(obs_type).notify("BALL_AND_STICK")
+              break;
+              case "VanDerWaal":
+                $(obs_type).notify("VAN_DER_WAALS")
+              break;
+              case "Stick":
+                $(obs_type).notify("STICK")
+              break;
+              default:
+                console.log("Unknown target ID:", targetID);
+            }
+          })
+
+
+
+          document.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            contextMenu.style.display = "block";
+            contextMenu.style.left = `${event.clientX}px`;
+            contextMenu.style.top = `${event.clientY}px`;
+          });
+          document.addEventListener("click", (event) => {
+            contextMenu.style.display = "none";
+          });
+
+          $dom.appendChild(contextMenu);
         })
 		  }
 		""")
 
-		if ac isa Observable
-			on(r -> Bonito.evaljs(session, js"""
-				$(VISUALIZE).then(
-					VISUALIZE => {
-						// todo: implement
-            //VISUALIZE.updateRepresentation(0, $r)
-						//VISUALIZE.render()
-					}
-				)"""), session, or)
-		end
 
+    on(obs_type) do new_type
+      new_model = prepare_model(ac isa Observable ? ac[] : ac; type=new_type)
+      Bonito.evaljs(session, js"""
+        $(VISUALIZE).then(VISUALIZE => {
+          const scene_div = document.getElementById("bv-scene-1-div");
+          scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_model, replace: true } }));
+          VISUALIZE.render()
+        }
+      )""")
+    end
 		Bonito.record_states(session, dom)
-	end
+  end
 end
 
 """
