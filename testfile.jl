@@ -13,5 +13,5 @@ reconstruct_fragments!(AlaAla, fdb);
 
 display_model(AlaAla)
 
-atoms(AlaAla)
+#atoms(AlaAla)
 

@@ -33,14 +33,14 @@ function display_model(
 )
   dom = DOM.div(;style="width: $width; height: $height;")
 
-  obs_type = Observable(type)
+  
 	# or, r = if ac isa Observable
 	# 	or = map(a -> prepare_model(a; type=type), ac)
 	# 	or, or.val
 	# else
 	# 	nothing, prepare_model(ac; type=type)
 	# end
-
+  obs_type = Observable(type)
   obs_model = map(t -> prepare_model(ac; type=t), obs_type)
   r = obs_model[]
 
@@ -137,8 +137,20 @@ function display_model(
           });
 
           $dom.appendChild(contextMenu);
+
+        /*
+          $(obs_type).on(m =>{
+            VISUALIZE.updateRepresentation(0, m);
+            VISUALIZE.animate()
+          });
+          */
+
         })
+
 		  }
+
+
+
 		""")
 
 
@@ -148,7 +160,8 @@ function display_model(
         $(VISUALIZE).then(VISUALIZE => {
           const scene_div = document.getElementById("bv-scene-1-div");
           scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_model, replace: true } }));
-          VISUALIZE.render()
+          //VISUALIZE.updateRepresentation(0, $new_model);
+          VISUALIZE.render();
         }
       )""")
     end
