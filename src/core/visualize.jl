@@ -2,7 +2,10 @@ export
     ball_and_stick,
     stick,
     van_der_waals,
-    display_model
+    display_model,
+    prepare_model
+
+include("../dataex/dataprep.jl")
 
 const VISUALIZE = ES6Module(asset_path("../typescript/dist/biochemicalvisualization.js"))::Asset
 
@@ -28,21 +31,21 @@ end
 function display_model(
     ac::Union{AbstractAtomContainer, Observable{<:AbstractAtomContainer}}; 
     type="BALL_AND_STICK", 
-    width="80%", 
-    height="60%"
+    width="100%", 
+    height="90%"
 )
-  dom = DOM.div(;style="width: $width; height: $height;")
 
+  dom = DOM.div(; style="display: flex; width: $width; height: $height;")
+
+  #Observable Type
+  ot = Observable(type)
+	or, r = if ac isa Observable
+		or = map(a -> prepare_model(a; type=type), ac)
+		or, or[]
+	else
+		nothing, prepare_model(ac; type=type)
+	end
   
-	# or, r = if ac isa Observable
-	# 	or = map(a -> prepare_model(a; type=type), ac)
-	# 	or, or.val
-	# else
-	# 	nothing, prepare_model(ac; type=type)
-	# end
-  obs_type = Observable(type)
-  obs_model = map(t -> prepare_model(ac; type=t), obs_type)
-  r = obs_model[]
 
 	if isnothing(r)
 		return
@@ -51,7 +54,13 @@ function display_model(
 	# compute the center of mass of the geometry
 	focus_point = mean(center.(vcat(values(r.primitives)...)))
 
+  atoms_idx_vec = [idx for idx in atoms(ac).idx]
+  
+
+  oidx = Observable(0) 
+
 	App() do session::Session
+
 
 		Bonito.onload(session, dom, js"""
       function (container){
@@ -61,8 +70,9 @@ function display_model(
 
           const scene = document.createElement("bv-scene");
           scene.setAttribute("id", "bv-scene-1");
-          scene.setAttribute("width", $width);
-          scene.setAttribute("height", $height);
+          scene.setAttribute("style", `flex: 0 0 75%; 
+                                        height: 100%;
+                                        position: relative;`);
         
 
           document.addEventListener('bv-scene-mounted', () => {
@@ -85,16 +95,82 @@ function display_model(
           });
 
           $dom.appendChild(scene);
+          
+          //DASHBOARD CONTAINER
+          const dash_div = document.createElement("div");
+          dash_div.setAttribute("id", "dash-div-1");
+          dash_div.setAttribute("style", `flex: 0 0 25%; 
+                                          height: 100%;
+                                          padding: 5px; 
+                                          overflow: auto;
+                                          display: flex;
+                                          flex-direction: column;`);
+
+          //Top Container
+          const dashTop = document.createElement("div");
+          dashTop.setAttribute("id", "dash-top-div");
+          dashTop.setAttribute("style", `flex: 1;
+                                          overflow:auto;
+                                          padding: 5px;`);
+
+          //Header
+          const dashHeader = document.createElement("div");
+          dashHeader.setAttribute("style", `padding: 4px;
+                                            font-size: 28px; 
+                                            font-weight: bold; 
+                                            color: #000000;`);
+          dashHeader.textContent = "Atom data";
+
+          //Idx - Dropdown
+          const dropdownContainer = document.createElement("div");
+          dropdownContainer.setAttribute("style", `padding: 4px;`);
+          const dropdownSelect = document.createElement("select");
+          dropdownSelect.setAttribute("id", "atom-idx-select");
+
+          const idxOptions = $(atoms_idx_vec)
+          idxOptions.forEach(function(idx) {
+            const option = document.createElement("option");
+            option.value = idx;
+            option.textContent = idx;
+            dropdownSelect.appendChild(option);
+          });
+
+          //Dropdown Eventlistener
+          dropdownSelect.addEventListener("change", event => {
+            const selectedIdx = parseInt(event.target.value, 10);
+            $(oidx).notify(selectedIdx);
+          });
+
+          //Bottom Container
+          const dashBottom = document.createElement("div");
+          dashBottom.setAttribute("id", "dash-bottom-div");
+          dashBottom.setAttribute("style", `flex: 1;
+                                            padding: 5px;
+                                            overflow: auto;
+                                            border: 1px solid #000000;`);
+
+
+          //append to DOM
+          dropdownContainer.appendChild(dropdownSelect);
+          dashTop.appendChild(dashHeader)
+          dashTop.appendChild(dropdownContainer);
+          dash_div.appendChild(dashTop);
+          dash_div.appendChild(dashBottom);
+
+          $dom.appendChild(dash_div);
+
 
           // Context-menu
           const contextMenu = document.createElement("bv-context-menu");
           contextMenu.setAttribute("id", "bv-context-menu-1");
-          contextMenu.style.position = "fixed";
-          contextMenu.style.display = "none";
-          contextMenu.style.zIndex = "9999";
-          contextMenu.style.backgroundColor = "white";
-          contextMenu.style.border = "1px solid black";
-          contextMenu.style.padding = "5px";
+          contextMenu.setAttribute("style", `position: fixed;
+                                          display: none;
+                                          z-index: 9999;
+                                          background-color: white;
+                                          border: 1px solid black;
+                                          padding: 5px;
+          `);
+
           contextMenu.innerHTML = `
             <div id="BallAndStick"  style="padding:4px; cursor:pointer; color:#000000;">
               Ball and Stick
@@ -111,13 +187,13 @@ function display_model(
             const targetID = event.target.id;
             switch(targetID) {
               case "BallAndStick":
-                $(obs_type).notify("BALL_AND_STICK")
+                $(ot).notify("BALL_AND_STICK")
               break;
               case "VanDerWaal":
-                $(obs_type).notify("VAN_DER_WAALS")
+                $(ot).notify("VAN_DER_WAALS")
               break;
               case "Stick":
-                $(obs_type).notify("STICK")
+                $(ot).notify("STICK")
               break;
               default:
                 console.log("Unknown target ID:", targetID);
@@ -137,34 +213,40 @@ function display_model(
           });
 
           $dom.appendChild(contextMenu);
-
-        /*
-          $(obs_type).on(m =>{
-            VISUALIZE.updateRepresentation(0, m);
-            VISUALIZE.animate()
-          });
-          */
-
+ 
         })
 
 		  }
-
-
-
 		""")
 
+      on(oidx) do idx
+      atom_dict = prepAtomByIdx(ac isa Observable ? ac[] : ac, Int(idx))
 
-    on(obs_type) do new_type
+
+      Bonito.evaljs(session, js"""
+        const data  = $atom_dict;
+        const dashBottom = document.getElementById("dash-bottom-div");
+        dashBottom.innerHTML = "";
+        for (const [key, value] of Object.entries(data)) {
+          const row = document.createElement("div");
+          row.textContent = key + ": " + value;
+          row.style.padding = "2px";
+          dashBottom.appendChild(row);
+        }
+      """)
+      end
+
+    on(ot) do new_type
       new_model = prepare_model(ac isa Observable ? ac[] : ac; type=new_type)
       Bonito.evaljs(session, js"""
         $(VISUALIZE).then(VISUALIZE => {
           const scene_div = document.getElementById("bv-scene-1-div");
           scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_model, replace: true } }));
-          //VISUALIZE.updateRepresentation(0, $new_model);
-          VISUALIZE.render();
         }
       )""")
     end
+
+
 		Bonito.record_states(session, dom)
   end
 end

@@ -8,6 +8,7 @@ using GeometryBasics
 using LinearAlgebra
 using MsgPack
 using Statistics
+using JSON
 
 import GeometryBasics: Sphere, Cylinder
 
@@ -17,6 +18,7 @@ include("compat.jl")
 include("core/element_colors.jl")
 include("core/representation.jl")
 include("core/visualize.jl")
+
 
 include("models/ball_and_stick.jl")
 include("models/stick.jl")
