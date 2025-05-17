@@ -5,7 +5,12 @@ export
     display_model,
     prepare_model
 
-include("../dataex/dataprep.jl")
+
+util_files = ["prep_atom_info.jl", "system_utils.jl"]
+
+for file in util_files
+    include("../utils/$file")
+end
 
 const VISUALIZE = ES6Module(asset_path("../typescript/dist/biochemicalvisualization.js"))::Asset
 
@@ -28,6 +33,14 @@ function prepare_model(ac::AbstractAtomContainer; type="BALL_AND_STICK")
 	return nothing
 end
 
+function forceRefresh(obs::Observable{<:AbstractAtomContainer})
+    obs[] = obs[]
+    return obs
+end
+
+
+
+
 function display_model(
     ac::Union{AbstractAtomContainer, Observable{<:AbstractAtomContainer}}; 
     type="BALL_AND_STICK", 
@@ -35,29 +48,68 @@ function display_model(
     height="90%"
 )
 
+
+  function updateObservable(ob::Observable, new_value)
+    if ob isa Observable
+      ob[] = new_value
+    else
+      ob = Observable(new_value)
+    end
+  end
+  
   dom = DOM.div(; style="display: flex; width: $width; height: $height;")
 
+  #Observable Atom idx
+  oidx = Observable(0) 
+
   #Observable Type
-  ot = Observable(type)
-	or, r = if ac isa Observable
-		or = map(a -> prepare_model(a; type=type), ac)
-		or, or[]
-	else
-		nothing, prepare_model(ac; type=type)
-	end
-  
+  type = type isa Observable ? type : Observable(type)
+
+  #Observable ac
+  ac = ac isa Observable ? ac : Observable(ac)
+
+  #Observable updatevent
+  oupdate = Observable(Dict())
+
+  #Observable representation 
+  or , r = if ac isa Observable
+    if type isa Observable
+      or = map((a, t) -> prepare_model(a; type=t), ac, type)
+      or, or[]
+    else
+      or = map(a -> prepare_model(a; type=type), ac)
+      or, or[]
+    end
+  else
+    nothing, prepare_model(ac; type=type)
+  end
+
+
 
 	if isnothing(r)
 		return
 	end
 
 	# compute the center of mass of the geometry
-	focus_point = mean(center.(vcat(values(r.primitives)...)))
 
-  atoms_idx_vec = [idx for idx in atoms(ac).idx]
+  obs_focus_point, focus_point = if or isa Observable
+    obs_focus_point = map(r -> mean(center.(vcat(values(r.primitives)...))), or)
+    obs_focus_point, obs_focus_point[]
+  else
+    nothing, mean(center.(vcat(values(r.primitives)...)))
+  end
+
   
 
-  oidx = Observable(0) 
+  #Liste der idx in ac
+  atoms_idx_vec = if ac isa Observable
+    map(a -> [idx for idx in atoms(a).idx], ac)
+  else
+    [idx for idx in atoms(ac).idx]
+  end
+  
+
+
 
 	App() do session::Session
 
@@ -127,12 +179,12 @@ function display_model(
           const dropdownSelect = document.createElement("select");
           dropdownSelect.setAttribute("id", "atom-idx-select");
 
-          const idxOptions = $(atoms_idx_vec)
+          const idxOptions = $(atoms_idx_vec[])
           idxOptions.forEach(function(idx) {
             const option = document.createElement("option");
             option.value = idx;
             option.textContent = idx;
-            dropdownSelect.appendChild(option);
+            dropdownSelect.appendChild(option); 
           });
 
           //Dropdown Eventlistener
@@ -187,20 +239,18 @@ function display_model(
             const targetID = event.target.id;
             switch(targetID) {
               case "BallAndStick":
-                $(ot).notify("BALL_AND_STICK")
-              break;
+                $(type).notify("BALL_AND_STICK");
+                break;
               case "VanDerWaal":
-                $(ot).notify("VAN_DER_WAALS")
-              break;
+                $(type).notify("VAN_DER_WAALS");
+                break;
               case "Stick":
-                $(ot).notify("STICK")
-              break;
+                $(type).notify("STICK");
+                break;
               default:
                 console.log("Unknown target ID:", targetID);
             }
           })
-
-
 
           document.addEventListener("contextmenu", (event) => {
             event.preventDefault();
@@ -219,9 +269,10 @@ function display_model(
 		  }
 		""")
 
+
+    # Aufruf des Observables für die Aktualisierung der Infobox
       on(oidx) do idx
       atom_dict = prepAtomByIdx(ac isa Observable ? ac[] : ac, Int(idx))
-
 
       Bonito.evaljs(session, js"""
         const data  = $atom_dict;
@@ -236,12 +287,15 @@ function display_model(
       """)
       end
 
-    on(ot) do new_type
-      new_model = prepare_model(ac isa Observable ? ac[] : ac; type=new_type)
+
+
+    # Aufruf für die Aktualisierung des Models
+    on(or) do new_rep
       Bonito.evaljs(session, js"""
         $(VISUALIZE).then(VISUALIZE => {
           const scene_div = document.getElementById("bv-scene-1-div");
-          scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_model, replace: true } }));
+          scene_div.dispatchEvent(new CustomEvent("set-focus", { detail: { focus_point: $(obs_focus_point[]) } }));
+          scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_rep} }));
         }
       )""")
     end
