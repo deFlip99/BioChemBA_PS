@@ -13,9 +13,12 @@ normalize_names!(AlaAla, fdb);
 build_bonds!(AlaAla, fdb);
 reconstruct_fragments!(AlaAla, fdb);
 
-
+#Test normal
 AlaObs = Observable(AlaAla)
 display_model(AlaObs)
 
+#test mit AmberFF
+# AlaFF = Observable(AmberFF(AlaAla))
+# ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
+# optimize_structure!(AlaFF)
 
-# updateAtomsInSystem(AlaAla, Dict("5" => Dict("r" => [2.0, 2.0, 2.0])))

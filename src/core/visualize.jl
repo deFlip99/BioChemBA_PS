@@ -193,6 +193,16 @@ function display_model(
             $(oidx).notify(selectedIdx);
           });
 
+          //on atom click change Infobox
+          document.addEventListener("atom-clicked", event => {
+            const clickedIdx = event.detail.atomIdx;
+            if (atoms_idx_vec.includes(clickedIdx)) {
+              dropdownSelect.value = clickedIdx;
+              $(oidx).notify(clickedIdx);
+            }
+          });
+
+
           //Bottom Container
           const dashBottom = document.createElement("div");
           dashBottom.setAttribute("id", "dash-bottom-div");
