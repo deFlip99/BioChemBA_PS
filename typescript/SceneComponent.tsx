@@ -339,14 +339,20 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
             context.current.pickedMesh = result.pickedMesh as Mesh;
             //context.current.pickedMesh?.setEnabled(false);
 
+            
             const clickedAtomIdx = context.current.pickedMesh.metadata?.meta?.[2];
             console.log("Clicked atom index: ", clickedAtomIdx);
+            console.log("metadata: ", context.current.pickedMesh.metadata.meta);
+            console.log("metadata.meta: ", context.current.pickedMesh.metadata.meta);
+
+
             context.current.highlightMesh?.setEnabled(true);
             context.current.highlightMesh?.position.copyFrom(context.current.pickedMesh.position);
             context.current.highlightMesh?.scaling.copyFrom(context.current.pickedMesh.scaling);
             context.current.highlightMesh?.rotation.copyFrom(context.current.pickedMesh.rotation);
 
             //Dispatch atom-clicked event
+            
             if (webComponentRef.current) {
               console.log("Dispatching atom-clicked event");
               webComponentRef.current.dispatchEvent( new CustomEvent('atom-clicked', {
@@ -355,7 +361,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
                 },
                 bubbles: true,
                 composed: true,
-              }));
+              }))};
 
             setModalText("Element Symbol: " + context.current.pickedMesh.metadata.meta[1] + "\n" +
               "Metadata: " + context.current.pickedMesh.metadata.meta + "\n" +

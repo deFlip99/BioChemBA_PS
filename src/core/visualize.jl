@@ -6,9 +6,7 @@ export
     prepare_model
 
 
-util_files = ["prep_atom_info.jl", "system_utils.jl"]
-
-for file in util_files
+for file in ["prep_atom_info.jl", "system_utils.jl"]
     include("../utils/$file")
 end
 
@@ -33,6 +31,7 @@ function prepare_model(ac::AbstractAtomContainer; type="BALL_AND_STICK")
 	return nothing
 end
 
+#Löst manuell ein Observable aus
 function forceRefresh(obs::Observable{<:AbstractAtomContainer})
     obs[] = obs[]
     return obs
@@ -196,10 +195,8 @@ function display_model(
           //on atom click change Infobox
           document.addEventListener("atom-clicked", event => {
             const clickedIdx = event.detail.atomIdx;
-            if (atoms_idx_vec.includes(clickedIdx)) {
               dropdownSelect.value = clickedIdx;
               $(oidx).notify(clickedIdx);
-            }
           });
 
 
