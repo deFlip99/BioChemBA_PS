@@ -7,7 +7,7 @@ export
 
 
 for file in ["prep_atom_info.jl", "system_utils.jl"]
-    include("../utils/$file")
+    include("../jl_utils/$file")
 end
 
 const VISUALIZE = ES6Module(asset_path("../typescript/dist/biochemicalvisualization.js"))::Asset
@@ -59,7 +59,7 @@ function display_model(
   dom = DOM.div(; style="display: flex; width: $width; height: $height;")
 
   #Observable Atom idx
-  oidx = Observable(0) 
+  oidx = Observable{Union{Nothing, Int}}(nothing) 
 
   #Observable Type
   type = type isa Observable ? type : Observable(type)
@@ -68,7 +68,7 @@ function display_model(
   ac = ac isa Observable ? ac : Observable(ac)
 
   #Observable updatevent
-  oupdate = Observable(Dict())
+  oupdate = Observable{Union{Nothing, Dict}}(nothing)
 
   #Observable representation 
   or , r = if ac isa Observable
@@ -186,6 +186,16 @@ function display_model(
             dropdownSelect.appendChild(option); 
           });
 
+
+          //Bottom Container
+          const dashBottom = document.createElement("div");
+          dashBottom.setAttribute("id", "dash-bottom-div");
+          dashBottom.setAttribute("style", `flex: 1;
+                                            padding: 5px;
+                                            overflow: auto;
+                                            border: 1px solid #000000;`);
+
+
           //Dropdown Eventlistener
           dropdownSelect.addEventListener("change", event => {
             const selectedIdx = parseInt(event.target.value, 10);
@@ -200,14 +210,17 @@ function display_model(
           });
 
 
-          //Bottom Container
-          const dashBottom = document.createElement("div");
-          dashBottom.setAttribute("id", "dash-bottom-div");
-          dashBottom.setAttribute("style", `flex: 1;
-                                            padding: 5px;
-                                            overflow: auto;
-                                            border: 1px solid #000000;`);
-
+          //Atom drag Event
+          document.addEventListener('atom-draged', event => {
+            console.log("atom-draged event");
+            const Idx = String(event.detail.atomIdx);
+            const newX = Math.trunc(event.detail.newX * 100) / 100;
+            const newY = Math.trunc(event.detail.newY * 100) / 100;
+            const newZ = Math.trunc(event.detail.newZ * 100) / 100;
+                $(oupdate).notify({ idx:    Idx,
+                                    field:  "r",
+                                    value:  [newX, newY, newZ]});
+          });
 
           //append to DOM
           dropdownContainer.appendChild(dropdownSelect);
@@ -300,6 +313,7 @@ function display_model(
     on(or) do new_rep
       Bonito.evaljs(session, js"""
         $(VISUALIZE).then(VISUALIZE => {
+          console.log("or called");
           const scene_div = document.getElementById("bv-scene-1-div");
           scene_div.dispatchEvent(new CustomEvent("set-focus", { detail: { focus_point: $(obs_focus_point[]) } }));
           scene_div.dispatchEvent(new CustomEvent("add-representation", { detail: { representation: $new_rep} }));
@@ -307,6 +321,29 @@ function display_model(
       )""")
     end
 
+
+    # Aufruf für die Aktualisierung von Atomen
+    on(oupdate) do payload
+      Bonito.evaljs(session, js"""
+      console.log("oupdate called");
+        """)
+      # detail = Dict()
+      # payloads = [x for x in payload]
+      # for p in payloads
+      #   key = p[0]
+      #   for d in p[1] 
+      #     field = d[0]
+      #     value = d[1]
+      #     detail[key] = Dict(field => value)
+      #   end
+      # end
+        idx =   payload["idx"]
+        field = payload["field"]
+        value = payload["value"]
+
+      updateAtomsInSystem(ac, Dict(idx => Dict(field => value)))
+      oidx[] = parse(Int, idx)
+    end
 
 		Bonito.record_states(session, dom)
   end

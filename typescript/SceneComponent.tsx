@@ -91,12 +91,25 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
 
   // Function to update the scene with new data
   const update = (data: any) => {
+    if (!context.current) return;
+    if (context.current.pickedMesh) {
+      removeDragBehaviourFromMesh(context.current.pickedMesh);
+    }
+    if (context.current.highlightMesh) {
+      context.current.highlightMesh.dispose();
+      context.current.highlightMesh = undefined;
+    }
+
     context.current?.scene.meshes.forEach((mesh) => mesh.dispose());
     context.current?.meshes.forEach((mesh) => mesh.dispose());
-    if (context.current) {
-      context.current.meshes = [];
-      addRepresentation(context.current, data);
-    }
+
+    context.current.meshes = [];
+    context.current.pickedMesh = undefined;
+
+    addRepresentation(context.current, data);
+
+    
+
     context.current?.scene.createOrUpdateSelectionOctree();
     context.current?.scene.freezeActiveMeshes();
     setLoadedPDB(true);
@@ -120,38 +133,101 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
   const addDragBehaviour = (ctx: AppContext) => {
     const atoms = ctx.meshes.filter((mesh) => mesh.name === "childSphere");
     atoms.forEach((mesh) => {
-      const pointerDragBehaviour = new PointerDragBehavior();
+      if (mesh.getBehaviorByName("PointerDrag")) {
+        return;
+    }
+      const pointerDragBehaviour = new PointerDragBehavior({
+        dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)
+      });
+
+      pointerDragBehaviour.useObjectOrientationForDragging = false;
+
       pointerDragBehaviour.onDragStartObservable.add(() => {
         mesh.unfreezeWorldMatrix();
+        if (ctx.camera && canvas.current) {
+          ctx.camera.detachControl();
+        }
       });
       pointerDragBehaviour.onDragObservable.add(() => {
         ctx.scene.createOrUpdateSelectionOctree();
       })
       pointerDragBehaviour.onDragEndObservable.add(async () => {
-        const updateObject = {
-          atomIdx: mesh.metadata.meta[2],
-          newPosition: mesh.position,
-        };
+       if (webComponentRef.current) {
+          console.log("Dispatching atom-draged event");
+          const absolutePos = mesh.getAbsolutePosition();
+              webComponentRef.current.dispatchEvent( new CustomEvent('atom-draged', {
+                detail: {
+                  atomIdx: mesh.metadata.meta[2],
+                  newX: absolutePos.x,
+                  newY: absolutePos.y,
+                  newZ: absolutePos.z
+                },
+                bubbles: true,
+                composed: true,
+              }))
+          
+      };
 
-        /** TODO: replace */
-        /*
-        const headers = new Headers();
-        headers.set('Content-Type', 'application/json');
-        headers.set('Accept', 'application/json');
-
-        const request: RequestInfo = new Request('/api/editor/update_atom_position', {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(updateObject),
-        });
-
-        await fetch(request).then(res => res.json()).then(res => console.log(res));
-        */
+        ctx.camera.attachControl(canvas.current, true);
         mesh.freezeWorldMatrix();
+
       });
       mesh.addBehavior(pointerDragBehaviour);
     });
   }
+
+
+  //Funktion um einzelnes DragBehavior hinzuzufügen
+  const addDragBehaviourToMesh = (ctx: AppContext, mesh:Mesh) => {
+    if (mesh.getBehaviorByName("PointerDrag")) {
+      return;
+    }
+
+    const pointerDragBehaviour = new PointerDragBehavior({
+        dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)
+      });
+
+    pointerDragBehaviour.useObjectOrientationForDragging = false;
+    pointerDragBehaviour.onDragStartObservable.add(() => {
+      mesh.unfreezeWorldMatrix();
+      if (ctx.camera && canvas.current) {
+        ctx.camera.detachControl();
+      }
+      
+    });
+
+    pointerDragBehaviour.onDragEndObservable.add(async () => {
+      if (webComponentRef.current) {
+          console.log("Dispatching atom-draged event");
+          const absolutePos = mesh.getAbsolutePosition();
+              webComponentRef.current.dispatchEvent( new CustomEvent('atom-draged', {
+                detail: {
+                  atomIdx: mesh.metadata.meta[2],
+                  newX: absolutePos.x,
+                  newY: absolutePos.y,
+                  newZ: absolutePos.z
+                },
+                bubbles: true,
+                composed: true,
+              }))
+          
+      };
+
+      if (ctx.camera && canvas.current) {
+        ctx.camera.attachControl(canvas.current, true);
+      }
+
+      mesh.freezeWorldMatrix();
+    });
+    mesh.addBehavior(pointerDragBehaviour);
+  }
+
+  const removeDragBehaviourFromMesh = (mesh: Mesh) => {
+    const dragBehavior = mesh.getBehaviorByName("PointerDrag");
+    if (dragBehavior) {
+      mesh.removeBehavior(dragBehavior);
+    }
+  };
 
   // Function to remove drag behavior from atoms
   const removeDragBehaviour = (ctx: AppContext) => {
@@ -326,20 +402,35 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       }
 
       let result: PickingInfo;
+
+
       switch (pointerInfo.type) {
         case PointerEventTypes.POINTERDOWN:
           context.current.pointerMoved = false;
           break;
 
         case PointerEventTypes.POINTERUP:
-          if (context.current.pointerMoved) return;
+
+          context.current.mouseDown = true;
+
+          if (context.current.pointerMoved) {
+            scene.freezeActiveMeshes();
+          return
+        }
+
           scene.unfreezeActiveMeshes();
           result = scene.pick(scene.pointerX, scene.pointerY);
+
+        if (context.current.pickedMesh){
+          removeDragBehaviourFromMesh(context.current.pickedMesh);
+        }
+
           if (result.hit && result.pickedMesh !== context.current.pickedMesh && result.pickedMesh !== context.current.highlightMesh) {
             context.current.pickedMesh = result.pickedMesh as Mesh;
             //context.current.pickedMesh?.setEnabled(false);
 
-            
+            addDragBehaviourToMesh(context.current, context.current.pickedMesh);
+
             const clickedAtomIdx = context.current.pickedMesh.metadata?.meta?.[2];
             console.log("Clicked atom index: ", clickedAtomIdx);
             console.log("metadata: ", context.current.pickedMesh.metadata.meta);
@@ -347,9 +438,15 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
 
 
             context.current.highlightMesh?.setEnabled(true);
+            
+            if (context.current.camera && canvas.current) {
+              context.current.camera.detachControl();
+            }
+
             context.current.highlightMesh?.position.copyFrom(context.current.pickedMesh.position);
             context.current.highlightMesh?.scaling.copyFrom(context.current.pickedMesh.scaling);
             context.current.highlightMesh?.rotation.copyFrom(context.current.pickedMesh.rotation);
+
 
             //Dispatch atom-clicked event
             
@@ -370,7 +467,17 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
               " Z: " + context.current.pickedMesh.position.z.toFixed(3) + " }" + "\n" +
               "Color: " + context.current.pickedMesh.instancedBuffers.color.toString());
             setModalOpen(true);
+          }else {
+            if (!result.hit) {
+              if (context.current.camera && canvas.current) {
+                
+                context.current.camera.attachControl(canvas.current, true)
+            }
+              context.current.pickedMesh = undefined;
+              context.current.highlightMesh?.setEnabled(false);
+            }
           }
+
           scene.freezeActiveMeshes();
           break;
 

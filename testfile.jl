@@ -6,7 +6,7 @@ using BiochemicalVisualization
 using BiochemicalVisualization:display_model
 
 
-include("src/utils/system_utils.jl")
+include("src/jl_utils/system_utils.jl")
 
 
 fdb = FragmentDB()
@@ -22,7 +22,7 @@ display_model(AlaObs)
 
 
 #test mit AmberFF
-AlaFF = Observable(AmberFF(AlaAla))
-ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
-optimize_structure!(AlaFF)
+# AlaFF = Observable(AmberFF(AlaAla))
+# ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
+# optimize_structure!(AlaFF)
 
