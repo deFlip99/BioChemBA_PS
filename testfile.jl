@@ -17,12 +17,12 @@ reconstruct_fragments!(AlaAla, fdb);
 
 
 #Test normal
-AlaObs = Observable(AlaAla)
-display_model(AlaObs)
+#AlaObs = Observable(AlaAla)
+#display_model(AlaObs)
 
 
 #test mit AmberFF
-# AlaFF = Observable(AmberFF(AlaAla))
-# ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
-# optimize_structure!(AlaFF)
+AlaFF = Observable(AmberFF(AlaAla))
+ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
+#optimize_structure!(AlaFF)
 

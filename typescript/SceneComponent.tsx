@@ -137,7 +137,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
         return;
     }
       const pointerDragBehaviour = new PointerDragBehavior({
-        dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)
+        /*dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)*/
       });
 
       pointerDragBehaviour.useObjectOrientationForDragging = false;
@@ -184,7 +184,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
     }
 
     const pointerDragBehaviour = new PointerDragBehavior({
-        dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)
+        /*dragPlaneNormal: ctx.camera.getDirection(Vector3.Forward()).scale(-1)*/
       });
 
     pointerDragBehaviour.useObjectOrientationForDragging = false;
