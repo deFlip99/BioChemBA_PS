@@ -46,6 +46,15 @@ function display_model(
     width="100%", 
     height="90%"
 )
+  #is_notebook = isdefined(Main, :IJulia) && Main.IJulia.inited
+
+  # if isJPYBook
+  #   try 
+  #     Bonito.configure_server!(listen_url="127.0.0.1", listen_port=8000)
+  #   catch e
+  #     @warn "Error configuring Bonito server defaults: $e"
+  #   end
+  # end
 
 
   function updateObservable(ob::Observable, new_value)
@@ -117,7 +126,9 @@ function display_model(
       function (container){
         $(VISUALIZE).then(VISUALIZE => {
           parent = $dom.parentNode;
-          parent.style.height = '100vh';
+          parent.style.maxHeight = '300px';
+          parent.style.maxWidth = '400px';
+
 
           const scene = document.createElement("bv-scene");
           scene.setAttribute("id", "bv-scene-1");
@@ -160,7 +171,7 @@ function display_model(
           //Top Container
           const dashTop = document.createElement("div");
           dashTop.setAttribute("id", "dash-top-div");
-          dashTop.setAttribute("style", `flex: 1;
+          dashTop.setAttribute("style", `flex: 0 0 auto;
                                           overflow:auto;
                                           padding: 5px;`);
 
@@ -172,32 +183,60 @@ function display_model(
                                             color: #000000;`);
           dashHeader.textContent = "Atom data";
 
-          //Idx - Dropdown
-          const dropdownContainer = document.createElement("div");
-          dropdownContainer.setAttribute("style", `padding: 4px;`);
-          const dropdownSelect = document.createElement("select");
-          dropdownSelect.setAttribute("id", "atom-idx-select");
+          //Create a container for both dropdowns
+          const dropdownsContainer = document.createElement("div");
+          dropdownsContainer.setAttribute("style", `display: flex; 
+                                          flex-direction: row; 
+                                          gap: 8px; 
+                                          padding: 4px;`);
 
+          //Idx - Dropdown
+          const dropdownContainerId = document.createElement("div");
+          dropdownContainerId.setAttribute("style", `flex: 1; min-width: 0;`);
+          const dropdownSelectId = document.createElement("select");
+          dropdownSelectId.setAttribute("id", "atom-idx-select");
+          dropdownSelectId.setAttribute("style", `width: 100%;`);
+
+          //backgroundcolor - Dropdown
+          const dropdownContainerBgCol = document.createElement("div");
+          dropdownContainerBgCol.setAttribute("style", `flex: 1; min-width: 0;`);
+          const dropdownSelectBgCol = document.createElement("select");
+          dropdownSelectBgCol.setAttribute("id", "background-color-select");
+          dropdownSelectBgCol.setAttribute("style", `width: 100%;`);
+
+
+          //Idx options color options
           const idxOptions = $(atoms_idx_vec[])
           idxOptions.forEach(function(idx) {
             const option = document.createElement("option");
             option.value = idx;
             option.textContent = idx;
-            dropdownSelect.appendChild(option); 
+            dropdownSelectId.appendChild(option); 
           });
 
+          //Background color options
+          const bgColorOptions = [{color: "Black", r:0.0 , g:0.0, b:0.0, a:1.0},
+                                  {color: "White", r:1.0, g:1.0, b:1.0, a:1.0},
+                                  {color: "Gray", r:0.3, g:0.3, b:0.3, a:1.0},
+                                  {color: "Light Gray", r:0.7, g:0.7, b:0.7, a:1.0},];
+          bgColorOptions.forEach(function(bgCol) {
+            const option = document.createElement("option");
+            option.value = JSON.stringify({r: bgCol.r, g: bgCol.g, b: bgCol.b, a: bgCol.a});
+            option.textContent = bgCol.color;
+            dropdownSelectBgCol.appendChild(option);
+          });
 
           //Bottom Container
           const dashBottom = document.createElement("div");
           dashBottom.setAttribute("id", "dash-bottom-div");
-          dashBottom.setAttribute("style", `flex: 1;
+          dashBottom.setAttribute("style", `flex: 1 1 auto;
                                             padding: 5px;
                                             overflow: auto;
                                             border: 1px solid #000000;`);
 
 
-          //Dropdown Eventlistener
-          dropdownSelect.addEventListener("change", event => {
+          //DropdownID Eventlistener
+          dropdownSelectId.addEventListener("change", event => {
             const selectedIdx = parseInt(event.target.value, 10);
             $(oidx).notify(selectedIdx);
           });
@@ -205,8 +244,17 @@ function display_model(
           //on atom click change Infobox
           document.addEventListener("atom-clicked", event => {
             const clickedIdx = event.detail.atomIdx;
-              dropdownSelect.value = clickedIdx;
+              dropdownSelectId.value = clickedIdx;
               $(oidx).notify(clickedIdx);
+          });
+
+          //Background Eventlistener
+          dropdownSelectBgCol.addEventListener("change", event => {
+            const colorData = JSON.parse(event.target.value);
+            const scene_div = document.getElementById("bv-scene-1-div");
+            scene_div.dispatchEvent(new CustomEvent("change-background", { 
+            detail: colorData 
+            }));
           });
 
 
@@ -223,9 +271,16 @@ function display_model(
           });
 
           //append to DOM
-          dropdownContainer.appendChild(dropdownSelect);
-          dashTop.appendChild(dashHeader)
-          dashTop.appendChild(dropdownContainer);
+          dropdownContainerId.appendChild(dropdownSelectId);
+          dropdownContainerBgCol.appendChild(dropdownSelectBgCol);
+
+          // Add both dropdown containers to the main container
+          dropdownsContainer.appendChild(dropdownContainerId);
+          dropdownsContainer.appendChild(dropdownContainerBgCol);
+
+          dashTop.appendChild(dashHeader);
+          dashTop.appendChild(dropdownsContainer); // Add the container instead of individual dropdowns
+          
           dash_div.appendChild(dashTop);
           dash_div.appendChild(dashBottom);
 

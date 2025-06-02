@@ -20,9 +20,16 @@ reconstruct_fragments!(AlaAla, fdb);
 #AlaObs = Observable(AlaAla)
 #display_model(AlaObs)
 
+#Test large
+Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
+normalize_names!(Pti, fdb);
+build_bonds!(Pti, fdb);
+reconstruct_fragments!(Pti, fdb);
+PtiObs = Observable(Pti)
+display_model(PtiObs)
 
 #test mit AmberFF
-AlaFF = Observable(AmberFF(AlaAla))
-ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
+#AlaFF = Observable(AmberFF(AlaAla))
+#ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
 #optimize_structure!(AlaFF)
 

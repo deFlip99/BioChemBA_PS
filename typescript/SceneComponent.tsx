@@ -64,6 +64,8 @@ export type AppContext = {
 
   update: (data: any) => void,
   editor_update: (data: any) => void,
+
+  changeBackgroundColor: (r: number, g: number, b: number, a?: number) => void,
 };
 
 type DebugText = {
@@ -220,6 +222,12 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       mesh.freezeWorldMatrix();
     });
     mesh.addBehavior(pointerDragBehaviour);
+  }
+
+  const changeBackgroundColor = (r: number, g: number, b: number, a: number = 1.0) => {
+    if (context.current?.scene){
+      context.current.scene.clearColor = new Color4(r, g, b, a);
+    }
   }
 
   const removeDragBehaviourFromMesh = (mesh: Mesh) => {
@@ -380,6 +388,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       isDragging: false,
       update,
       editor_update,
+      changeBackgroundColor,
     };
 
     scene.registerBeforeRender(() => {
@@ -540,6 +549,16 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       }
     };
 
+    //Handler for background color
+    const handleChangeBackground: EventListener = (event) => {
+      if ( event instanceof CustomEvent){
+        if (context.current){
+          const {r, g, b, a = 1.0} = event.detail;
+          context.current.scene.clearColor = new Color4(r, g, b, a);
+        } 
+      }
+    };
+
     const handleSetRenderMode: EventListener = (event) => {
       if (event instanceof CustomEvent) {
         if (context.current) {
@@ -565,7 +584,9 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
         webComponentRef.current.addEventListener("add-representation", handleAddRepresentation);
         webComponentRef.current.addEventListener("set-focus", handleSetFocus);
         webComponentRef.current.addEventListener("set-render-mode", handleSetRenderMode);
+        webComponentRef.current.addEventListener("change-background", handleChangeBackground);
         webComponentRef.current.dispatchEvent(new CustomEvent('bv-scene-mounted', { bubbles: true, composed: true }));
+        
         // Trigger resizeHandler to set the initial size
         setTimeout(() => {
           requestAnimationFrame(resizeHandler);
@@ -581,6 +602,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       webComponentRef.current?.removeEventListener("add-representation", handleAddRepresentation);
       webComponentRef.current?.removeEventListener("set-focus", handleSetFocus);
       webComponentRef.current?.removeEventListener("set-render-mode", handleSetRenderMode);
+      webComponentRef.current?.removeEventListener("change-background", handleChangeBackground);
     };
 
   }, []);
