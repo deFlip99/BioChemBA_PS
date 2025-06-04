@@ -17,16 +17,16 @@ reconstruct_fragments!(AlaAla, fdb);
 
 
 #Test normal
-#AlaObs = Observable(AlaAla)
-#display_model(AlaObs)
+AlaObs = Observable(AlaAla)
+display_model(AlaObs)
 
 #Test large
-Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
-normalize_names!(Pti, fdb);
-build_bonds!(Pti, fdb);
-reconstruct_fragments!(Pti, fdb);
-PtiObs = Observable(Pti)
-display_model(PtiObs)
+# Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
+# normalize_names!(Pti, fdb);
+# build_bonds!(Pti, fdb);
+# reconstruct_fragments!(Pti, fdb);
+# PtiObs = Observable(Pti)
+# display_model(PtiObs)
 
 #test mit AmberFF
 #AlaFF = Observable(AmberFF(AlaAla))

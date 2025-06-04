@@ -16,7 +16,11 @@ import {
   PointerDragBehavior,
   PickingInfo,
   PointerEventTypes,
-  Color4
+  Color4,
+  Color3,
+  PBRMaterial,
+  FresnelParameters,
+  StandardMaterial
 } from '@babylonjs/core';
 
 import { Inspector } from '@babylonjs/inspector';
@@ -25,6 +29,7 @@ import { TextBlock } from '@babylonjs/gui';
 
 import { addRepresentation, renderRepresentation } from './rendering';
 import { createSSAO2, changeSSAOMode } from './ssao';
+import { create } from 'domain';
 
 type SceneComponentProps = {
   id: string;
@@ -66,6 +71,7 @@ export type AppContext = {
   editor_update: (data: any) => void,
 
   changeBackgroundColor: (r: number, g: number, b: number, a?: number) => void,
+  setReflectionIntensity?: (intensity: number) => void,
 };
 
 type DebugText = {
@@ -179,7 +185,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
   }
 
 
-  //Funktion um einzelnes DragBehavior hinzuzufügen
+  //Adding single DragBehaviour
   const addDragBehaviourToMesh = (ctx: AppContext, mesh:Mesh) => {
     if (mesh.getBehaviorByName("PointerDrag")) {
       return;
@@ -229,6 +235,42 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       context.current.scene.clearColor = new Color4(r, g, b, a);
     }
   }
+
+  const setReflectionIntensity = (intensity: number) => {
+    if (!context.current?.scene) {
+      return;
+    }
+    else {
+    context.current.scene.environmentIntensity = intensity;
+
+    const atoms = context.current.scene.meshes.filter((mesh) => mesh.name == "childSphere");
+
+    atoms.forEach((mesh) => {
+      if (mesh.material) {
+        if (mesh.material instanceof PBRMaterial) {
+          mesh.material.environmentIntensity = intensity;
+        }else if (mesh.material instanceof StandardMaterial) {
+          if (intensity > 0) {
+            if (context.current?.scene.environmentTexture) {
+            mesh.material.reflectionTexture = context.current?.scene.environmentTexture || null;
+            mesh.material.reflectionFresnelParameters = new FresnelParameters();
+            mesh.material.reflectionFresnelParameters.bias = 0.1;
+            mesh.material.reflectionFresnelParameters.power = 0.5;
+            mesh.material.reflectionFresnelParameters.leftColor = mesh.material.diffuseColor;
+            mesh.material.reflectionFresnelParameters.rightColor = mesh.material.diffuseColor.scale(0.5);
+            }
+          }else {
+            mesh.material.reflectionTexture = null;
+            if(mesh.material.reflectionFresnelParameters){
+              mesh.material.reflectionFresnelParameters.bias = 0;
+              mesh.material.reflectionFresnelParameters.power = 0;
+            }
+          }
+        }
+      }
+    });
+  }
+  };
 
   const removeDragBehaviourFromMesh = (mesh: Mesh) => {
     const dragBehavior = mesh.getBehaviorByName("PointerDrag");
@@ -328,6 +370,21 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
 
     pointLight.parent = camera;
 
+    const createDefaultEnvironment = () => {
+      scene.createDefaultEnvironment({
+        createGround: false,
+        createSkybox: true,
+        skyboxSize: 1000,	
+        skyboxColor: new Color3(0.2, 0.2, 0.3),
+        environmentTexture: undefined,
+      });
+
+      scene.environmentIntensity = 0.0;
+
+    };
+
+    createDefaultEnvironment();
+
     if (!navigator.xr) {
       // @ts-ignore
       const WebXRPolyfill = (await import("webxr-polyfill")).default;
@@ -336,7 +393,6 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
 
     try {
       xr.current = await scene.createDefaultXRExperienceAsync({
-        floorMeshes: [CreateGround("floor", { width: 100, height: 100 }, scene)],
         disableDefaultUI: true,
       });
 
@@ -351,6 +407,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
     } catch {
 
     }
+
 
     const ssao = createSSAO2(scene);
 
@@ -389,6 +446,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       update,
       editor_update,
       changeBackgroundColor,
+      setReflectionIntensity,
     };
 
     scene.registerBeforeRender(() => {
@@ -578,6 +636,14 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       }
     };
 
+    const handleSetReflection: EventListener = (event) => {
+      if (event instanceof CustomEvent && context.current) {
+        console.log('Reflection event received:', event.detail);
+        const { intensity } = event.detail;
+        setReflectionIntensity(intensity);
+      }
+    };
+
     init().then(() => {
       if (webComponentRef.current) {
         console.log('Adding event listener to web component');
@@ -585,9 +651,9 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
         webComponentRef.current.addEventListener("set-focus", handleSetFocus);
         webComponentRef.current.addEventListener("set-render-mode", handleSetRenderMode);
         webComponentRef.current.addEventListener("change-background", handleChangeBackground);
+        webComponentRef.current.addEventListener("set-reflection", handleSetReflection); 
         webComponentRef.current.dispatchEvent(new CustomEvent('bv-scene-mounted', { bubbles: true, composed: true }));
         
-        // Trigger resizeHandler to set the initial size
         setTimeout(() => {
           requestAnimationFrame(resizeHandler);
         }, 0);
@@ -603,6 +669,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       webComponentRef.current?.removeEventListener("set-focus", handleSetFocus);
       webComponentRef.current?.removeEventListener("set-render-mode", handleSetRenderMode);
       webComponentRef.current?.removeEventListener("change-background", handleChangeBackground);
+      webComponentRef.current?.removeEventListener("set-reflection", handleSetReflection); 
     };
 
   }, []);

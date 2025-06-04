@@ -126,8 +126,7 @@ function display_model(
       function (container){
         $(VISUALIZE).then(VISUALIZE => {
           parent = $dom.parentNode;
-          parent.style.maxHeight = '300px';
-          parent.style.maxWidth = '400px';
+
 
 
           const scene = document.createElement("bv-scene");
@@ -187,19 +186,20 @@ function display_model(
           const dropdownsContainer = document.createElement("div");
           dropdownsContainer.setAttribute("style", `display: flex; 
                                           flex-direction: row; 
-                                          gap: 8px; 
-                                          padding: 4px;`);
+                                          gap: 4px; 
+                                          padding: 4px;
+                                          flex-wrap: wrap;`);
 
           //Idx - Dropdown
           const dropdownContainerId = document.createElement("div");
-          dropdownContainerId.setAttribute("style", `flex: 1; min-width: 0;`);
+          dropdownContainerId.setAttribute("style", `flex: 1; min-width: 120px;`);
           const dropdownSelectId = document.createElement("select");
           dropdownSelectId.setAttribute("id", "atom-idx-select");
           dropdownSelectId.setAttribute("style", `width: 100%;`);
 
           //backgroundcolor - Dropdown
           const dropdownContainerBgCol = document.createElement("div");
-          dropdownContainerBgCol.setAttribute("style", `flex: 1; min-width: 0;`);
+          dropdownContainerBgCol.setAttribute("style", `flex: 1; min-width: 120px;`);
           const dropdownSelectBgCol = document.createElement("select");
           dropdownSelectBgCol.setAttribute("id", "background-color-select");
           dropdownSelectBgCol.setAttribute("style", `width: 100%;`);
@@ -226,6 +226,28 @@ function display_model(
             dropdownSelectBgCol.appendChild(option);
           });
 
+          //reflection - Dropdown
+          const dropdownContainerReflection = document.createElement("div");
+          dropdownContainerReflection.setAttribute("style", `flex: 1; min-width: 120px;`);
+          const dropdownSelectReflection = document.createElement("select");
+          dropdownSelectReflection.setAttribute("id", "reflection-select");
+          dropdownSelectReflection.setAttribute("style", `width: 100%;`);
+
+          //Reflection options
+          const reflectionOptions = [
+            {name: "None", intensity: 0.0},
+            {name: "Low", intensity: 0.3},
+            {name: "Medium", intensity: 0.6},
+            {name: "High", intensity: 1.0}
+          ];
+
+          reflectionOptions.forEach(function(reflectionOpt) {
+            const option = document.createElement("option");
+            option.value = reflectionOpt.intensity;
+            option.textContent = reflectionOpt.name;
+            dropdownSelectReflection.appendChild(option);
+          });
+
           //Bottom Container
           const dashBottom = document.createElement("div");
           dashBottom.setAttribute("id", "dash-bottom-div");
@@ -248,12 +270,21 @@ function display_model(
               $(oidx).notify(clickedIdx);
           });
 
-          //Background Eventlistener
+          //Background color Eventlistener
           dropdownSelectBgCol.addEventListener("change", event => {
             const colorData = JSON.parse(event.target.value);
             const scene_div = document.getElementById("bv-scene-1-div");
             scene_div.dispatchEvent(new CustomEvent("change-background", { 
             detail: colorData 
+            }));
+          });
+
+          //Reflection Eventlistener
+          dropdownSelectReflection.addEventListener("change", event => {
+            const intensity = parseFloat(event.target.value);
+            const scene_div = document.getElementById("bv-scene-1-div");
+            scene_div.dispatchEvent(new CustomEvent("set-reflection", { 
+              detail: { intensity: intensity }
             }));
           });
 
@@ -273,13 +304,15 @@ function display_model(
           //append to DOM
           dropdownContainerId.appendChild(dropdownSelectId);
           dropdownContainerBgCol.appendChild(dropdownSelectBgCol);
+          dropdownContainerReflection.appendChild(dropdownSelectReflection);
 
           // Add both dropdown containers to the main container
           dropdownsContainer.appendChild(dropdownContainerId);
           dropdownsContainer.appendChild(dropdownContainerBgCol);
+          dropdownsContainer.appendChild(dropdownContainerReflection);
 
           dashTop.appendChild(dashHeader);
-          dashTop.appendChild(dropdownsContainer); // Add the container instead of individual dropdowns
+          dashTop.appendChild(dropdownsContainer); 
           
           dash_div.appendChild(dashTop);
           dash_div.appendChild(dashBottom);
