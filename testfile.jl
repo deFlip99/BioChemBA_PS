@@ -1,12 +1,12 @@
 using Pkg
 Pkg.activate(".")
+using Bonito
 using Bonito: Observable
 using BiochemicalAlgorithms
 using BiochemicalVisualization
 using BiochemicalVisualization:display_model
 
 
-include("src/jl_utils/system_utils.jl")
 
 
 fdb = FragmentDB()
@@ -18,7 +18,7 @@ reconstruct_fragments!(AlaAla, fdb);
 
 #Test normal
 AlaObs = Observable(AlaAla)
-display_model(AlaObs)
+display_model(AlaObs, app_mode=true)
 
 #Test large
 # Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
@@ -33,3 +33,40 @@ display_model(AlaObs)
 #ball_and_stick(map(AlaFF -> AlaFF.system, AlaFF))
 #optimize_structure!(AlaFF)
 
+# create a new system
+h2o = System()
+test = System()
+double_sys = System()
+# create system atoms
+o1 = Atom(h2o, 1, Elements.O)
+h1 = Atom(h2o, 2, Elements.H)
+h2 = Atom(h2o, 3, Elements.H)
+
+
+# set positions of the atoms
+# o1.r = Vector3{Float}(0, 0, 0)  <-- this is the default value!
+h1.r = Vector3{Float32}(1, 0, 0)
+h2.r = Vector3{Float32}(cos(105 * π / 180), sin(105 * π / 180), 0)
+
+# add bonds
+Bond(h2o, o1.idx, h1.idx, BondOrder.Single)
+Bond(h2o, o1.idx, h2.idx, BondOrder.Single)
+
+Molecule(h2o, name="H2O")
+
+h3 = Atom(test, 1, Elements.H)
+h3.r = Vector3{Float32}(2, 2, 2)
+o2 = Atom(test, 2, Elements.O)
+o2.r = Vector3{Float32}(3, 3, 3)
+Bond(test, h3.idx, o2.idx, BondOrder.Single)
+
+Molecule(test, name="tester")
+
+h2o_obs = Observable(h2o)
+test_obs = Observable(test)
+display_model(h2o_obs)
+
+display_model(test_obs)
+
+
+double_sys = h2o + test

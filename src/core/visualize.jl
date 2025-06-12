@@ -44,17 +44,15 @@ function display_model(
     ac::Union{AbstractAtomContainer, Observable{<:AbstractAtomContainer}}; 
     type="BALL_AND_STICK", 
     width="100%", 
-    height="90%"
+    height="90%",
+    app_mode=false,
+    notebook_mode=false
 )
-  #is_notebook = isdefined(Main, :IJulia) && Main.IJulia.inited
-
-  # if isJPYBook
-  #   try 
-  #     Bonito.configure_server!(listen_url="127.0.0.1", listen_port=8000)
-  #   catch e
-  #     @warn "Error configuring Bonito server defaults: $e"
-  #   end
-  # end
+ 
+  if notebook_mode
+    width = "500px"
+    height = "300px"
+  end
 
 
   function updateObservable(ob::Observable, new_value)
@@ -93,7 +91,6 @@ function display_model(
   end
 
 
-
 	if isnothing(r)
 		return
 	end
@@ -117,11 +114,137 @@ function display_model(
   end
   
 
+  if notebook_mode
+    Page(exportable=true, offline=false)
+  end
 
+
+if app_mode
+  Bonito.use_electron_display()
+end
 
 	App() do session::Session
+    #Execution as application
+    if app_mode
+      @show("exec app_mode")
+
+      Bonito.onload(session, dom, js"""
+        function (container){
+          $(VISUALIZE).then(VISUALIZE => {
+          parent = $dom.parentNode;
 
 
+
+          const scene = document.createElement("bv-scene");
+          scene.setAttribute("id", "bv-scene-1");
+          scene.setAttribute("style", `flex: 0 0 75%; 
+                                        height: 100%;
+                                        position: relative;`);
+        
+
+          document.addEventListener('bv-scene-mounted', () => {
+            console.log('component mounted');
+
+            function forwardToScene(eventName, data, component) {
+              if (component) {
+                  const event = new CustomEvent(eventName, { detail: data });
+                  component.dispatchEvent(event);
+              } else {
+                  console.warn("React Web Component not found!");
+              }
+            }
+
+            scene_div = document.getElementById("bv-scene-1-div");
+
+            forwardToScene("set-focus", { focus_point: $focus_point }, scene_div);
+            forwardToScene("add-representation", { representation: $r}, scene_div);
+            forwardToScene("set-render-mode", { ssao_mode: 2, debug: false }, scene_div);
+          });
+
+
+          //atom drag Eventlistene
+          document.addEventListener('atom-draged', event => {
+            console.log("atom-draged event");
+            const Idx = String(event.detail.atomIdx);
+            const newX = Math.trunc(event.detail.newX * 100) / 100;
+            const newY = Math.trunc(event.detail.newY * 100) / 100;
+            const newZ = Math.trunc(event.detail.newZ * 100) / 100;
+                $(oupdate).notify({ idx:    Idx,
+                                    field:  "r",
+                                    value:  [newX, newY, newZ]});
+          });
+
+          $dom.appendChild(scene);
+          const contextMenu = document.createElement("bv-context-menu");
+          contextMenu.setAttribute("id", "bv-context-menu-1");
+          contextMenu.setAttribute("style", `position: fixed;
+                                          display: none;
+                                          z-index: 9999;
+                                          background-color: rgba(255,255,255,0.95);
+                                          border: none;
+                                          border-radius: 8px;
+                                          padding: 8px;
+                                          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                                          backdrop-filter: blur(10px);
+          `);
+
+          contextMenu.innerHTML = `
+            <div id="BallAndStick"  style="padding:8px; cursor:pointer; color:#000000; border-radius: 4px; transition: background 0.2s;">
+              Ball and Stick
+            </div>
+            <div id="VanDerWaal" style="padding:8px; cursor:pointer; color:#000000; border-radius: 4px; transition: background 0.2s;">
+              Van der Waals
+            </div>
+            <div id="Stick" style="padding:8px; cursor:pointer; color:#000000; border-radius: 4px; transition: background 0.2s;">
+              Stick
+            </div>
+          `;
+
+          contextMenu.querySelectorAll('div').forEach(div => {
+            div.addEventListener('mouseenter', () => {
+            div.style.backgroundColor = '#f0f0f0';
+            });
+            div.addEventListener('mouseleave', () => {
+              div.style.backgroundColor = 'transparent';
+            });
+          });
+
+          contextMenu.addEventListener("click", event => {
+            const targetID = event.target.id;
+            switch(targetID) {
+              case "BallAndStick":
+                $(type).notify("BALL_AND_STICK");
+                break;
+              case "VanDerWaal":
+                $(type).notify("VAN_DER_WAALS");
+                break;
+              case "Stick":
+                $(type).notify("STICK");
+                break;
+              default:
+                console.log("Unknown target ID:", targetID);
+            }
+          });
+
+          document.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            contextMenu.style.display = "block";
+            contextMenu.style.left = `${event.clientX}px`;
+            contextMenu.style.top = `${event.clientY}px`;
+          });
+            
+          document.addEventListener("click", (event) => {
+            contextMenu.style.display = "none";
+          });
+
+          $dom.appendChild(contextMenu);
+          });
+        }
+      """)
+
+    #Execution as web app
+    else
+    
 		Bonito.onload(session, dom, js"""
       function (container){
         $(VISUALIZE).then(VISUALIZE => {
@@ -157,6 +280,8 @@ function display_model(
 
           $dom.appendChild(scene);
           
+
+
           //DASHBOARD CONTAINER
           const dash_div = document.createElement("div");
           dash_div.setAttribute("id", "dash-div-1");
@@ -318,7 +443,7 @@ function display_model(
           dash_div.appendChild(dashBottom);
 
           $dom.appendChild(dash_div);
-
+          
 
           // Context-menu
           const contextMenu = document.createElement("bv-context-menu");
@@ -376,7 +501,7 @@ function display_model(
 
 		  }
 		""")
-
+    end
 
     # Aufruf des Observables für die Aktualisierung der Infobox
       on(oidx) do idx
@@ -415,16 +540,6 @@ function display_model(
       Bonito.evaljs(session, js"""
       console.log("oupdate called");
         """)
-      # detail = Dict()
-      # payloads = [x for x in payload]
-      # for p in payloads
-      #   key = p[0]
-      #   for d in p[1] 
-      #     field = d[0]
-      #     value = d[1]
-      #     detail[key] = Dict(field => value)
-      #   end
-      # end
         idx =   payload["idx"]
         field = payload["field"]
         value = payload["value"]
@@ -442,14 +557,14 @@ end
 
 Creates and displays a ball-and-stick representation for the given atom container.
 """
-ball_and_stick(ac; kwargs...) = display_model(ac; type="BALL_AND_STICK", kwargs...)
+ball_and_stick(ac; app_mode=false, kwargs...) = display_model(ac; type="BALL_AND_STICK", app_mode=false, kwargs...)
 
 """
     stick(::AbstractAtomContainer, kwargs...)
 
 Creates and displays a stick representation for the given atom container.
 """
-stick(ac; kwargs...)          = display_model(ac; type="STICK", kwargs...)
+stick(ac; app_mode=false, kwargs...)          = display_model(ac; type="STICK",app_mode=false, kwargs...)
 
 """
     van_der_waals(::AbstractAtomContainer, kwargs...)
@@ -458,4 +573,4 @@ Creates and displays a van-der-Waals representation for the given atom container
 Sphere radii generally depend on the `radius` field of the corresponding atoms but
 are at least 1 Å.
 """
-van_der_waals(ac; kwargs...)  = display_model(ac; type="VAN_DER_WAALS", kwargs...)
+van_der_waals(ac; app_mode=false, kwargs...)  = display_model(ac; type="VAN_DER_WAALS", app_mode=false, kwargs...)
