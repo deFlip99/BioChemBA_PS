@@ -98,25 +98,11 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
   const [isLoadedPDB, setLoadedPDB] = React.useState<boolean>(false);
 
   // Function to update the scene with new data
-  const update = (data: any) => {
-    if (!context.current) return;
-    if (context.current.pickedMesh) {
-      removeDragBehaviourFromMesh(context.current.pickedMesh);
-    }
-    if (context.current.highlightMesh) {
-      context.current.highlightMesh.dispose();
-      context.current.highlightMesh = undefined;
-    }
+  const update = async (data: any) => {
 
-    context.current?.scene.meshes.forEach((mesh) => mesh.dispose());
-    context.current?.meshes.forEach((mesh) => mesh.dispose());
+    await cleanupMeshes();
 
-    context.current.meshes = [];
-    context.current.pickedMesh = undefined;
-
-    addRepresentation(context.current, data);
-
-    
+    if (context.current){addRepresentation(context.current, data);}
 
     context.current?.scene.createOrUpdateSelectionOctree();
     context.current?.scene.freezeActiveMeshes();
@@ -162,10 +148,13 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       pointerDragBehaviour.onDragEndObservable.add(async () => {
        if (webComponentRef.current) {
           console.log("Dispatching atom-draged event");
+          console.log(mesh.metadata.meta[5]);
+          console.log(parseInt(mesh.metadata.meta[5], 10));
           const absolutePos = mesh.getAbsolutePosition();
               webComponentRef.current.dispatchEvent( new CustomEvent('atom-draged', {
                 detail: {
                   atomIdx: mesh.metadata.meta[2],
+                  acID: mesh.metadata.meta[5],
                   newX: absolutePos.x,
                   newY: absolutePos.y,
                   newZ: absolutePos.z
@@ -211,6 +200,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
               webComponentRef.current.dispatchEvent( new CustomEvent('atom-draged', {
                 detail: {
                   atomIdx: mesh.metadata.meta[2],
+                  acID: mesh.metadata.meta[5],
                   newX: absolutePos.x,
                   newY: absolutePos.y,
                   newZ: absolutePos.z
@@ -222,7 +212,11 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       };
 
       if (ctx.camera && canvas.current) {
-        ctx.camera.attachControl(canvas.current, true);
+        //ctx.camera.attachControl(canvas.current, true);
+        const button = document.getElementById("camera-toggle");
+        if(button?.getAttribute("data-toggled") === "true"){
+          button.click();
+        }
       }
 
       mesh.freezeWorldMatrix();
@@ -278,6 +272,23 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       mesh.removeBehavior(dragBehavior);
     }
   };
+
+  async function cleanupMeshes() { 
+    if (!context.current) return;
+    if (context.current.pickedMesh) {
+      removeDragBehaviourFromMesh(context.current.pickedMesh);
+    }
+    if (context.current.highlightMesh) {
+      context.current.highlightMesh.dispose();
+      context.current.highlightMesh = undefined;
+    }
+
+    context.current?.scene.meshes.forEach((mesh) => mesh.dispose());
+    context.current?.meshes.forEach((mesh) => mesh.dispose());
+
+    context.current.meshes = [];
+    context.current.pickedMesh = undefined;
+  }
 
   // Function to remove drag behavior from atoms
   const removeDragBehaviour = (ctx: AppContext) => {
@@ -499,6 +510,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
             addDragBehaviourToMesh(context.current, context.current.pickedMesh);
 
             const clickedAtomIdx = context.current.pickedMesh.metadata?.meta?.[2];
+            const clickedAcId = context.current.pickedMesh.metadata?.meta?.[5];
             console.log("Clicked atom index: ", clickedAtomIdx);
             console.log("metadata: ", context.current.pickedMesh.metadata.meta);
             console.log("metadata.meta: ", context.current.pickedMesh.metadata.meta);
@@ -507,7 +519,12 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
             context.current.highlightMesh?.setEnabled(true);
             
             if (context.current.camera && canvas.current) {
-              context.current.camera.detachControl();
+              //context.current.camera.detachControl();
+              const button = document.getElementById("camera-toggle");
+              const buttonstate = button?.getAttribute("data-toggled");
+                if(button?.getAttribute("data-toggled") === "false"){
+                  button?.click();
+                }
             }
 
             context.current.highlightMesh?.position.copyFrom(context.current.pickedMesh.position);
@@ -522,6 +539,7 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
               webComponentRef.current.dispatchEvent( new CustomEvent('atom-clicked', {
                 detail: {
                   atomIdx: clickedAtomIdx,
+                  acId: clickedAcId,
                 },
                 bubbles: true,
                 composed: true,
@@ -538,7 +556,11 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
             if (!result.hit) {
               if (context.current.camera && canvas.current) {
                 
-                context.current.camera.attachControl(canvas.current, true)
+                //context.current.camera.attachControl(canvas.current, true)
+                const button = document.getElementById("camera-toggle");
+                if(button?.getAttribute("data-toggled") === "true"){
+                  button.click();
+                }
             }
               context.current.pickedMesh = undefined;
               context.current.highlightMesh?.setEnabled(false);
@@ -644,6 +666,22 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       }
     };
 
+    const handleFreezeCamera: EventListener = (event) =>{
+      if (event instanceof CustomEvent && context.current) {
+        if (context.current.camera && canvas.current) {
+          context.current.camera.detachControl();
+        }
+      }  
+    };
+
+    const handleUnfreezeCamera: EventListener = (event) =>{
+      if (event instanceof CustomEvent && context.current) {
+        if (context.current.camera && canvas.current) {
+          context.current.camera.attachControl(canvas.current, true)
+        }
+      }  
+    };
+
     init().then(() => {
       if (webComponentRef.current) {
         console.log('Adding event listener to web component');
@@ -651,7 +689,9 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
         webComponentRef.current.addEventListener("set-focus", handleSetFocus);
         webComponentRef.current.addEventListener("set-render-mode", handleSetRenderMode);
         webComponentRef.current.addEventListener("change-background", handleChangeBackground);
-        webComponentRef.current.addEventListener("set-reflection", handleSetReflection); 
+        webComponentRef.current.addEventListener("set-reflection", handleSetReflection);
+        webComponentRef.current.addEventListener("freeze-camera", handleFreezeCamera); 
+        webComponentRef.current.addEventListener("unfreeze-camera", handleUnfreezeCamera);
         webComponentRef.current.dispatchEvent(new CustomEvent('bv-scene-mounted', { bubbles: true, composed: true }));
         
         setTimeout(() => {
@@ -669,6 +709,8 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
       webComponentRef.current?.removeEventListener("set-focus", handleSetFocus);
       webComponentRef.current?.removeEventListener("set-render-mode", handleSetRenderMode);
       webComponentRef.current?.removeEventListener("change-background", handleChangeBackground);
+      webComponentRef.current?.removeEventListener("freeze-camera", handleFreezeCamera); 
+      webComponentRef.current?.removeEventListener("unfreeze-camera", handleUnfreezeCamera);
       webComponentRef.current?.removeEventListener("set-reflection", handleSetReflection); 
     };
 

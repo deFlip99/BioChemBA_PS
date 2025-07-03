@@ -1,5 +1,6 @@
 function prepare_van_der_waals_model(
-    ac::AbstractAtomContainer{T}) where {T<:Real}
+    ac::AbstractAtomContainer{T},
+    acID::Int=0) where {T<:Real}
 
     # todo: get vdw radii
     spheres = map(a -> _sphere(a.r, max(a.radius, T(1.0))), atoms(ac))
@@ -9,7 +10,8 @@ function prepare_van_der_waals_model(
                   String(Symbol(at.element)),
                   at.idx,
                   isnothing(at.chain_idx) ? "N/A" : at.chain_idx,
-                  isnothing(at.fragment_idx) ? "N/A" : at.fragment_idx] for at in atoms(ac)]
+                  isnothing(at.fragment_idx) ? "N/A" : at.fragment_idx,
+                  acID] for at in atoms(ac)]
 
     Representation{T}(primitives=Dict("spheres" => spheres), meta_data=meta_data, colors=Dict("sphere_colors" => sphere_colors))
 end
