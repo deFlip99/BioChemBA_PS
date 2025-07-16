@@ -1,0 +1,28 @@
+          // Testing Julia Generic Function Call
+          /*______________________________________________________________*/
+          const testButton = COMPONENTS.createButton("test-button", "Test Julia Func", {
+            colors: "secondary",
+            size: "medium",
+            action: () => {
+              $(call_print_func)();
+            }
+          });
+          const mainNavbar = mainLayout.querySelector("#main-navbar");
+          const actionsContainer = mainNavbar.querySelector("#navbar-actions");
+          actionsContainer.appendChild(testButton);
+          /*______________________________________________________________*/
+
+
+          // Testing Julia Generic Function Call
+          /*______________________________________________________________*/
+          const testButton = COMPONENTS.createButton("test-button", "Test Julia Func", {
+            colors: "secondary",
+            size: "medium",
+            action: () => {
+              $(call_print_func)();
+            }
+          });
+          const mainNavbar = mainLayout.querySelector("#main-navbar");
+          const actionsContainer = mainNavbar.querySelector("#navbar-actions");
+          actionsContainer.appendChild(testButton);
+          /*______________________________________________________________*/

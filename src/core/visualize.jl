@@ -34,12 +34,6 @@ function prepare_model(ac::AbstractAtomContainer; type="BALL_AND_STICK", acID::I
 	return nothing
 end
 
-
-function call_print_func()
-  println("This is a test function for generinc function calls from JS to Julia.");
-end
-
-
 function display_model(ac::Union{AbstractAtomContainer, 
               Observable{<:AbstractAtomContainer},
               Vector{<:AbstractAtomContainer},
@@ -90,11 +84,9 @@ function display_model(ac::Union{AbstractAtomContainer,
     end
   end
 
-
+  #Vertor for the AmberFF systems
   vec_amberff_obs = []
-  for ac_obs in ac_obs_vec_obs[]
-    push!(vec_amberff_obs, Observable(AmberFF(ac_obs[])))
-  end
+
 
 
   #Observable Atom idx
@@ -161,21 +153,6 @@ r = or[]
           const secondaryLayout = COMPONENTS.getSecondaryLayout();
           const controlsContainer = COMPONENTS.getControlsContainer();
 
-          // Testing Julia Generic Function Call
-          /*______________________________________________________________*/
-          const testButton = COMPONENTS.createButton("test-button", "Test Julia Func", {
-            colors: "secondary",
-            size: "medium",
-            action: () => {
-              $(call_print_func)();
-            }
-          });
-          const mainNavbar = mainLayout.querySelector("#main-navbar");
-          const actionsContainer = mainNavbar.querySelector("#navbar-actions");
-          actionsContainer.appendChild(testButton);
-          /*______________________________________________________________*/
-
-
           const contentLayout = mainLayout.querySelector("#main-content");
           contentLayout.appendChild(secondaryLayout.left);
           contentLayout.appendChild(secondaryLayout.right);
@@ -190,8 +167,6 @@ r = or[]
 
           secondaryLayout.right.appendChild(additionalContainer1);
           secondaryLayout.right.appendChild(systemContainer);
-
-
 
           //Scene 
           const scene = document.createElement("bv-scene");
@@ -338,8 +313,8 @@ r = or[]
           });
 
           //Atom drag Event
-          document.addEventListener('atom-draged', event => {
-            console.log("atom-draged event");
+          document.addEventListener('atom-dragged', event => {
+            console.log("atom-dragged event");
             const Idx = String(event.detail.atomIdx);
             const acID = String(event.detail.acID);
             const newX = Math.trunc(event.detail.newX * 100) / 100;
@@ -353,7 +328,7 @@ r = or[]
                               });
           });
 
-          //handle contextmenu click behaviour
+          //handle contextmenu click behavior
           document.addEventListener("contextmenu", event => {
             event.preventDefault();
             contextMenuReprType.style.display = "block";
@@ -382,6 +357,9 @@ r = or[]
 
 
     on(o_optimize) do state
+      for ac_obs in ac_obs_vec_obs[]
+        push!(vec_amberff_obs, Observable(AmberFF(ac_obs[])))
+      end
       for amber in vec_amberff_obs
         optimize_structure!(amber)
       end
@@ -408,11 +386,8 @@ r = or[]
         field = payload["field"]
         value = payload["value"]
 
-        updateAtomsInSystem(ac_obs_vec_obs[][acID][], Dict(idx => Dict(field => value)))
-        
-        ac_obs_vec_obs[] = ac_obs_vec_obs[]
+        updateAtomsInSystem(ac_obs_vec_obs[][acID], Dict(idx => Dict(field => value)))
     end
-
 		Bonito.record_states(session, dom)
   end
 end
