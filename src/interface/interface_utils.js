@@ -181,8 +181,7 @@ export function createButton(id, text, options = {}) {
     
     const sizes = {
         small: { padding: "4px 8px", font: "10px" },
-        medium: { padding: "6px 12px", font: "12px" },
-        large: { padding: "8px 16px", font: "14px" }
+        medium: { padding: "6px 12px", font: "12px" }
     };
     
     const colorScheme = colors[variant];
@@ -231,11 +230,10 @@ export function createToggleButton(id, text, options = {}){
 
     const sizes = {
         small: { padding: "4px 8px", font: "10px" },
-        medium: { padding: "6px 12px", font: "12px" },
-        large: { padding: "8px 16px", font: "14px" }
+        medium: { padding: "6px 12px", font: "12px" }
     };
 
-    const colorScheme = { bg: "#ffffff", active: "#858585", hover: "#128edb", text: "black" };
+    const colorScheme = { bg: "#ffffff", active: "#5f5f5fff", hover: "#909091ff", text: "black" };
     const sizeScheme = sizes[size];
 
     const button = document.createElement("button");
@@ -377,7 +375,6 @@ export function createBaseLayout(id, options = {}) {
     });
 
     const optimizeButton = createButton("optimize-button", "Optimize", {
-        colors: "secondary",
         size: "medium",
         action: () => {
             document.dispatchEvent(new CustomEvent("optimize-structure"));
@@ -419,8 +416,8 @@ export function createSecondaryLayout(leftId, rightId, options = {}) {
         `width: ${rightWidth}; ` +
         `height: 100%; ` +
         `overflow: auto; ` +
-        `background: #f8f9fa; ` +
-        `border-left: 1px solid #e5e7eb;`
+        `background: #ffffffff; ` +
+        `border-left: 1px solid #c4c4c4ff;`
     );
     
     return { left: leftColumn, right: rightColumn };
@@ -479,7 +476,7 @@ export function createSystemContainer(systems){
         width: "100%",
         height: "auto",
         padding: "16px",
-        background: "#f3f4f6",
+        background: "#ffffffff",
         border: "1px solid #000000",
         borderRadius: "0px",
         gap: "8px",
