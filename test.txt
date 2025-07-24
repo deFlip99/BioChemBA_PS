@@ -26,3 +26,14 @@
           const actionsContainer = mainNavbar.querySelector("#navbar-actions");
           actionsContainer.appendChild(testButton);
           /*______________________________________________________________*/
+
+
+
+webComponentRef.current.dispatchEvent( new CustomEvent('atom-clicked', {
+                detail: {
+                  atomIdx: clickedAtomIdx,
+                  acId: clickedAcId,
+                },
+                bubbles: true,
+                composed: true,
+              }));

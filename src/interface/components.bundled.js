@@ -77,10 +77,6 @@ function createButton(id, text, options = {}) {
         medium: {
             padding: "6px 12px",
             font: "12px"
-        },
-        large: {
-            padding: "8px 16px",
-            font: "14px"
         }
     };
     const colorScheme = colors[variant];
@@ -111,16 +107,12 @@ function createToggleButton(id, text, options = {}) {
         medium: {
             padding: "6px 12px",
             font: "12px"
-        },
-        large: {
-            padding: "8px 16px",
-            font: "14px"
         }
     };
     const colorScheme = {
         bg: "#ffffff",
-        active: "#858585",
-        hover: "#128edb",
+        active: "#5f5f5fff",
+        hover: "#909091ff",
         text: "black"
     };
     const sizeScheme = sizes[size];
@@ -190,7 +182,6 @@ function createBaseLayout(id, options = {}) {
         }
     });
     const optimizeButton = createButton("optimize-button", "Optimize", {
-        colors: "secondary",
         size: "medium",
         action: ()=>{
             document.dispatchEvent(new CustomEvent("optimize-structure"));
@@ -210,7 +201,7 @@ function createSecondaryLayout(leftId, rightId, options = {}) {
     leftColumn.setAttribute("style", `width: ${leftWidth}; ` + `height: 100%; ` + `overflow: hidden; ` + `padding-right: ${gap};`);
     const rightColumn = document.createElement("div");
     rightColumn.setAttribute("id", rightId);
-    rightColumn.setAttribute("style", `width: ${rightWidth}; ` + `height: 100%; ` + `overflow: auto; ` + `background: #f8f9fa; ` + `border-left: 1px solid #e5e7eb;`);
+    rightColumn.setAttribute("style", `width: ${rightWidth}; ` + `height: 100%; ` + `overflow: auto; ` + `background: #ffffffff; ` + `border-left: 1px solid #c4c4c4ff;`);
     return {
         left: leftColumn,
         right: rightColumn
@@ -255,7 +246,7 @@ function createSystemContainer(systems) {
         width: "100%",
         height: "auto",
         padding: "16px",
-        background: "#f3f4f6",
+        background: "#ffffffff",
         border: "1px solid #000000",
         borderRadius: "0px",
         gap: "8px",

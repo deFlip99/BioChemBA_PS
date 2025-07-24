@@ -19,12 +19,20 @@ reconstruct_fragments!(AlaAla, fdb);
 # display_model(AlaObs, app_mode=true)
 
 #Test large
-#Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
-#normalize_names!(Pti, fdb);
-#build_bonds!(Pti, fdb);
-#reconstruct_fragments!(Pti, fdb);
-#PtiObs = Observable(Pti)
-#display_model(PtiObs, app_mode=true)
+# Pti = load_pdb(ball_data_path("../test/data/5PTI.pdb"))
+# normalize_names!(Pti, fdb);
+# build_bonds!(Pti, fdb);
+# reconstruct_fragments!(Pti, fdb);
+# PtiObs = Observable(Pti)
+# display_model(PtiObs, app_mode=true)
+
+# tester = load_pdb("testmodels/5akc_veryverylarge.pdb")
+# normalize_names!(tester, fdb);
+# build_bonds!(tester, fdb);
+# reconstruct_fragments!(tester, fdb);
+# testerObs = Observable(tester)
+# display_model(testerObs, app_mode=true)
+
 
 #test mit AmberFF
 #AlaFF = Observable(AmberFF(AlaAla))

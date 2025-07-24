@@ -90,7 +90,7 @@ function display_model(ac::Union{AbstractAtomContainer,
 
 
   #Observable Atom idx
-  oidx = Observable{Union{Nothing, Int}}(nothing) 
+  oidx = Observable{Union{Nothing, Dict}}(nothing) 
 
   #Observable Type
   type = type isa Observable ? type : Observable(type)
@@ -147,12 +147,57 @@ r = or[]
       Bonito.onload(session, dom, js"""
       function (container){
         Promise.all([$(VISUALIZE), $(COMPONENTS)]).then(([VISUALIZE, COMPONENTS]) => {
-
+          
+          // FPS Counter Setup
+          const fpsCounter = document.createElement('div');
+          fpsCounter.id = 'fps-counter';
+          fpsCounter.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 1000;
+            pointer-events: none;
+          `;
+          fpsCounter.textContent = 'FPS: --';
+          
+          // FPS Calculation
+          let frames = 0;
+          let lastTime = performance.now();
+          let fps = 0;
+          
+          function updateFPS() {
+            frames++;
+            const currentTime = performance.now();
+            const deltaTime = currentTime - lastTime;
+            
+            if (deltaTime >= 1000) { // Update every second
+              fps = Math.round((frames * 1000) / deltaTime);
+              fpsCounter.textContent = `FPS: ${fps}`;
+              frames = 0;
+              lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(updateFPS);
+          }
+          
           //Layout 
           const mainLayout = COMPONENTS.getBaseLayout();
           const secondaryLayout = COMPONENTS.getSecondaryLayout();
           const controlsContainer = COMPONENTS.getControlsContainer();
-
+          
+          // Add FPS counter to main layout
+          mainLayout.style.position = 'relative';
+          mainLayout.appendChild(fpsCounter);
+          
+          // Start FPS monitoring
+          updateFPS();
+          
           const contentLayout = mainLayout.querySelector("#main-content");
           contentLayout.appendChild(secondaryLayout.left);
           contentLayout.appendChild(secondaryLayout.right);
@@ -312,6 +357,15 @@ r = or[]
             $(o_optimize).notify(true);
           });
 
+          //Atom click Event
+          document.addEventListener('atom-clicked', event => {
+            console.log("atom-clicked event");
+            const Idx = String(event.detail.atomIdx);
+            const acID = String(event.detail.acId);
+            console.log(acID);
+            $(oidx).notify({"idx": Idx, "acID": acID});
+          });
+
           //Atom drag Event
           document.addEventListener('atom-dragged', event => {
             console.log("atom-dragged event");
@@ -345,7 +399,27 @@ r = or[]
         })
       }
       """)
-  
+      # Aufruf des Observables für die Aktualisierung der Infobox
+    on(oidx) do payload
+      idx = parse(Int, payload["idx"])
+      acID = parse(Int, payload["acID"])
+      atom_dict = prepAtomByIdx(ac_obs_vec_obs[][acID][], idx)
+
+      Bonito.evaljs(session, js"""
+        const data  = $atom_dict;
+        const dashBottom = document.getElementById("additional-container-1");
+        dashBottom.innerHTML = "";
+        for (const [key, value] of Object.entries(data)) {
+          const row = document.createElement("div");
+          row.textContent = key + ": " + value;
+          row.style.padding = "2px";
+          dashBottom.appendChild(row);
+        }
+      """)
+    end
+
+
+
 
     on(singleType) do t 
       for i in selected_systems[]
@@ -381,12 +455,13 @@ r = or[]
 
     # Aufruf für die Aktualisierung von Atomen
     on(oupdate) do payload
-        idx = payload["idx"]
-        acID = parse(Int, payload["acID"])
-        field = payload["field"]
-        value = payload["value"]
+      println("oupdate called")
+      idx = payload["idx"]
+      acID = parse(Int, payload["acID"])
+      field = payload["field"]
+      value = payload["value"]
 
-        updateAtomsInSystem(ac_obs_vec_obs[][acID], Dict(idx => Dict(field => value)))
+      updateAtomsInSystem(ac_obs_vec_obs[][acID], Dict(idx => Dict(field => value)))
     end
 		Bonito.record_states(session, dom)
   end

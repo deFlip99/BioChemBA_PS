@@ -535,7 +535,6 @@ export const SceneComponent = forwardRef((props: SceneComponentProps, ref) => {
             //Dispatch atom-clicked event
             
             if (webComponentRef.current) {
-              console.log("Dispatching atom-clicked event");
               webComponentRef.current.dispatchEvent( new CustomEvent('atom-clicked', {
                 detail: {
                   atomIdx: clickedAtomIdx,
