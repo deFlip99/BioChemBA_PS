@@ -147,7 +147,8 @@ r = or[]
       Bonito.onload(session, dom, js"""
       function (container){
         Promise.all([$(VISUALIZE), $(COMPONENTS)]).then(([VISUALIZE, COMPONENTS]) => {
-          
+          /*--------------------------------------------------------------------------*/
+          /* FPS Anzeige wurde mit copilot hinzugefügt, gehört nicht zum Originalcode */
           // FPS Counter Setup
           const fpsCounter = document.createElement('div');
           fpsCounter.id = 'fps-counter';
@@ -185,7 +186,7 @@ r = or[]
             
             requestAnimationFrame(updateFPS);
           }
-          
+          /*--------------------------------------------------------------------------*/
           //Layout 
           const mainLayout = COMPONENTS.getBaseLayout();
           const secondaryLayout = COMPONENTS.getSecondaryLayout();
